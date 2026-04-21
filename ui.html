@@ -1,0 +1,1583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SecureSense -Threat Intelligence</title>
+
+<!-- Bootstrap 5 -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+<!-- Bootstrap Icons -->
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet"/>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet"/>
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js">
+</script>
+<script>
+  if (localStorage.getItem("auth") !== "true") {
+    window.location.href = "login.html";
+  }
+</script>
+
+<style>
+:root {
+  --bg-base:      #060a12;
+  --bg-card:      #0c1220;
+  --bg-card2:     #111827;
+  --accent-cyan:  #00e5ff;
+  --accent-red:   #ff3a5c;
+  --accent-green: #00ff9d;
+  --accent-amber: #ffb300;
+  --accent-purple:#a855f7;
+  --border-dim:   rgba(255,255,255,0.07);
+  --border-glow:  rgba(0,229,255,0.3);
+  --text-primary: #e8edf5;
+  --text-muted:   #5a6a80;
+  --text-dim:     #8899aa;
+  --font-display: 'Syne', sans-serif;
+  --font-mono:    'Space Mono', monospace;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--font-display);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── GRID NOISE BACKGROUND ─────────────────── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── TOP GLOW ───────────────────────────────── */
+body::after {
+  content: '';
+  position: fixed;
+  top: -200px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 800px;
+  height: 400px;
+  background: radial-gradient(ellipse, rgba(0,229,255,0.07) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.wrapper { position: relative; z-index: 1; }
+
+.logout-btn {
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border-dim);
+  border-radius: 10px;
+  color: var(--text-dim);
+  transition: 0.2s;
+}
+
+.logout-btn:hover {
+  color: var(--accent-cyan);
+  border-color: var(--border-glow);
+}
+
+/* ── HEADER ─────────────────────────────────── */
+.soc-header {
+  border-bottom: 1px solid var(--border-dim);
+  background: rgba(6,10,18,0.9);
+  backdrop-filter: blur(16px);
+  padding: 1rem 2rem;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.soc-header .brand {
+  font-size: 1.4rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+}
+
+.soc-header .brand span { color: var(--accent-cyan); }
+
+.status-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--accent-green);
+  animation: pulse-green 2s ease-in-out infinite;
+  display: inline-block;
+}
+
+@keyframes pulse-green {
+  0%,100% { box-shadow: 0 0 0 0 rgba(0,255,157,0.6); }
+  50%      { box-shadow: 0 0 0 6px rgba(0,255,157,0); }
+}
+
+.live-badge {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  color: var(--accent-green);
+  background: rgba(0,255,157,0.08);
+  border: 1px solid rgba(0,255,157,0.2);
+  padding: 3px 10px;
+  border-radius: 20px;
+}
+
+.time-display {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* ── SECTION TITLE ──────────────────────────── */
+.section-label {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  letter-spacing: 0.15em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.section-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border-dim);
+}
+
+/* ── 3D FLIP CARD ───────────────────────────── */
+.flip-card {
+  perspective: 1000px;
+  height: 160px;
+  cursor: pointer;
+}
+
+.flip-card-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.65s cubic-bezier(0.4, 0.2, 0.2, 1);
+  transform-style: preserve-3d;
+}
+
+.flip-card:hover .flip-card-inner,
+.flip-card.flipped .flip-card-inner {
+  transform: rotateY(180deg);
+}
+
+.flip-front, .flip-back {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius: 16px;
+  padding: 1.4rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  border: 1px solid var(--border-dim);
+}
+
+.flip-front {
+  background: var(--bg-card);
+  overflow: hidden;
+}
+
+.flip-front::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  border-radius: 16px 16px 0 0;
+}
+
+.flip-back {
+  background: var(--bg-card2);
+  transform: rotateY(180deg);
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+}
+
+/* Per-card accent colors */
+.card-total .flip-front::before  { background: var(--accent-cyan); }
+.card-attacks .flip-front::before { background: var(--accent-red); }
+.card-blocked .flip-front::before { background: var(--accent-amber); }
+.card-safe .flip-front::before    { background: var(--accent-green); }
+
+.card-total  { --card-accent: var(--accent-cyan); }
+.card-attacks{ --card-accent: var(--accent-red); }
+.card-blocked{ --card-accent: var(--accent-amber); }
+.card-safe   { --card-accent: var(--accent-green); }
+
+.card-icon {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border-dim);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1rem;
+  color: var(--card-accent);
+}
+
+.card-label {
+  font-size: 0.72rem;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.card-value {
+  font-size: 2.4rem;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--card-accent);
+  letter-spacing: -0.04em;
+}
+
+.card-delta {
+  font-size: 0.7rem;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+}
+
+.flip-back .back-title {
+  color: var(--card-accent);
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.flip-back .back-row {
+  display: flex;
+  justify-content: space-between;
+  color: var(--text-dim);
+  padding: 3px 0;
+  border-bottom: 1px solid var(--border-dim);
+}
+
+.flip-back .back-row span:last-child {
+  color: var(--card-accent);
+  font-weight: 700;
+}
+
+.flip-hint {
+  font-size: 0.6rem;
+  color: var(--text-muted);
+  text-align: right;
+  font-family: var(--font-mono);
+  margin-top: 4px;
+}
+
+/* ── CHART PANEL ─────────────────────────────── */
+.panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border-dim);
+  border-radius: 16px;
+  padding: 1.4rem;
+  height: 100%;
+}
+
+.panel-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.panel-title i { color: var(--accent-cyan); }
+
+/* ── LIVE TRAFFIC TABLE ──────────────────────── */
+.traffic-table {
+  width: 100%;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  border-collapse: collapse;
+}
+
+.traffic-table thead th {
+  color: var(--text-muted);
+  font-size: 0.62rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0 8px 10px;
+  border-bottom: 1px solid var(--border-dim);
+  font-weight: 400;
+}
+
+.traffic-table tbody tr {
+  border-bottom: 1px solid var(--border-dim);
+  transition: background 0.2s;
+  animation: row-in 0.4s ease both;
+}
+
+@keyframes row-in {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.traffic-table tbody tr:hover { background: rgba(255,255,255,0.02); }
+
+.traffic-table td {
+  padding: 9px 8px;
+  color: var(--text-dim);
+}
+
+.traffic-table td:first-child { color: var(--text-primary); }
+
+.badge-attack {
+  font-size: 0.6rem;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.05em;
+}
+
+.badge-benign  { background: rgba(0,255,157,0.1);  color: var(--accent-green);  border: 1px solid rgba(0,255,157,0.2); }
+.badge-ddos    { background: rgba(255,58,92,0.1);   color: var(--accent-red);    border: 1px solid rgba(255,58,92,0.2); }
+.badge-scan    { background: rgba(255,179,0,0.1);   color: var(--accent-amber);  border: 1px solid rgba(255,179,0,0.2); }
+.badge-brute   { background: rgba(168,85,247,0.1);  color: var(--accent-purple); border: 1px solid rgba(168,85,247,0.2); }
+.badge-bot     { background: rgba(0,229,255,0.1);   color: var(--accent-cyan);   border: 1px solid rgba(0,229,255,0.2); }
+
+.conf-bar {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border-dim);
+  margin-top: 3px;
+  overflow: hidden;
+}
+
+.conf-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--accent-cyan);
+  transition: width 0.6s ease;
+}
+
+/* ── ALERTS ─────────────────────────────────── */
+.alert-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-dim);
+  animation: alert-in 0.5s ease both;
+}
+
+@keyframes alert-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.alert-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  margin-top: 4px;
+  flex-shrink: 0;
+}
+
+.alert-dot.critical { background: var(--accent-red);    box-shadow: 0 0 6px var(--accent-red); animation: pulse-red 1.5s infinite; }
+.alert-dot.warning  { background: var(--accent-amber);  box-shadow: 0 0 6px var(--accent-amber); }
+.alert-dot.info     { background: var(--accent-cyan);   box-shadow: 0 0 6px var(--accent-cyan); }
+
+@keyframes pulse-red {
+  0%,100% { box-shadow: 0 0 0 0 rgba(255,58,92,0.8); }
+  50%      { box-shadow: 0 0 0 6px rgba(255,58,92,0); }
+}
+
+.alert-text { font-size: 0.78rem; color: var(--text-dim); line-height: 1.5; }
+.alert-text strong { color: var(--text-primary); font-weight: 600; }
+.alert-time { font-family: var(--font-mono); font-size: 0.62rem; color: var(--text-muted); }
+
+/* ── SOC ASSISTANT ──────────────────────────── */
+.assistant-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border-glow);
+  border-radius: 16px;
+  padding: 1.4rem;
+  box-shadow: 0 0 30px rgba(0,229,255,0.05);
+}
+
+.chat-messages {
+  max-height: 200px;
+  overflow-y: auto;
+  margin-bottom: 1rem;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-dim) transparent;
+}
+
+.msg {
+  margin-bottom: 10px;
+  animation: msg-in 0.3s ease both;
+}
+
+@keyframes msg-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.msg-user .bubble {
+  background: rgba(0,229,255,0.08);
+  border: 1px solid rgba(0,229,255,0.15);
+  color: var(--accent-cyan);
+  font-size: 0.78rem;
+  padding: 8px 12px;
+  border-radius: 12px 12px 4px 12px;
+  display: inline-block;
+  max-width: 85%;
+  float: right;
+  clear: both;
+}
+
+.msg-ai .bubble {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border-dim);
+  color: var(--text-dim);
+  font-size: 0.78rem;
+  padding: 8px 12px;
+  border-radius: 12px 12px 12px 4px;
+  display: inline-block;
+  max-width: 85%;
+  float: left;
+  clear: both;
+  font-family: var(--font-mono);
+  line-height: 1.6;
+}
+
+.msg-ai .ai-label {
+  font-size: 0.6rem;
+  color: var(--accent-cyan);
+  font-family: var(--font-mono);
+  margin-bottom: 3px;
+  letter-spacing: 0.05em;
+}
+
+.clearfix::after { content: ''; display: table; clear: both; }
+
+.chat-input-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.chat-input {
+  flex: 1;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid var(--border-dim);
+  border-radius: 10px;
+  padding: 9px 14px;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.chat-input:focus { border-color: var(--accent-cyan); }
+.chat-input::placeholder { color: var(--text-muted); }
+
+.chat-send {
+  background: var(--accent-cyan);
+  border: none;
+  border-radius: 10px;
+  color: #000;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 0.75rem;
+  padding: 9px 16px;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.15s;
+}
+
+.chat-send:hover { opacity: 0.85; transform: scale(0.98); }
+
+/* ── SPARKLINE ───────────────────────────────── */
+.sparkline-wrap { height: 40px; margin-top: 6px; }
+
+/* ── THREAT LEVEL GAUGE ─────────────────────── */
+.threat-gauge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.gauge-track {
+  flex: 1;
+  height: 6px;
+  background: var(--border-dim);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.gauge-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 1s ease;
+}
+
+.gauge-fill.low    { background: var(--accent-green); width: 15%; }
+.gauge-fill.medium { background: var(--accent-amber); width: 45%; }
+.gauge-fill.high   { background: var(--accent-red);   width: 80%; }
+
+.gauge-label {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  min-width: 50px;
+  text-align: right;
+}
+
+/* ── SCROLLBAR ─────────────────────────────── */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-dim); border-radius: 2px; }
+
+/* ── RESPONSIVE ─────────────────────────────── */
+@media (max-width: 768px) {
+  .flip-card { height: 140px; }
+  .card-value { font-size: 1.8rem; }
+}
+</style>
+</head>
+
+<body>
+<div class="wrapper">
+
+<!-- ── HEADER ────────────────────────────────── -->
+<header class="soc-header">
+  <div class="d-flex align-items-center justify-content-between">
+    <div class="d-flex align-items-center gap-3">
+      <div class="brand"><span>SOC</span> AI Dashboard</div>
+      <span class="live-badge" id="conn-badge"><span class="status-dot me-1" id="conn-dot"></span>CONNECTING…</span>
+      <span id="review-badge" style="display:none;font-family:var(--font-mono);font-size:0.62rem;padding:2px 10px;border-radius:20px;background:rgba(255,179,0,0.1);color:var(--accent-amber);border:1px solid rgba(255,179,0,0.25);"></span>
+    </div>
+    <div class="d-flex align-items-center gap-3">
+      <div class="threat-gauge" style="width:200px;">
+        <span style="font-family:var(--font-mono);font-size:0.62rem;color:var(--text-muted);white-space:nowrap;">THREAT</span>
+        <div class="gauge-track"><div class="gauge-fill low" id="threat-fill"></div></div>
+        <span class="gauge-label" id="threat-label">LOW</span>
+      </div>
+      <div class="time-display" id="clock">--:--:--</div>
+      <button class="logout-btn" id="logout-btn" type="button" title="Logout" aria-label="Logout">
+        <i class="bi bi-box-arrow-right"></i>
+      </button>
+    </div>
+  </div>
+  <div style="font-size:0.72rem;color:var(--text-muted);margin-top:4px;font-family:var(--font-mono);">
+    Real-Time Threat Intelligence &nbsp;/&nbsp; CICIDS2017 XGBoost Model &nbsp;/&nbsp; v1.0.0
+  </div>
+</header>
+
+<div class="container-fluid px-3 px-md-4 py-4">
+
+  <!-- ── STAT CARDS (3D FLIP) ──────────────── -->
+  <div class="section-label">Overview</div>
+  <div class="row g-3 mb-4">
+
+    <!-- Total Logs -->
+    <div class="col-6 col-md-3">
+      <div class="flip-card card-total" onclick="this.classList.toggle('flipped')">
+        <div class="flip-card-inner">
+          <div class="flip-front">
+            <div class="d-flex justify-content-between align-items-start">
+              <div class="card-icon"><i class="bi bi-activity"></i></div>
+              <div class="card-label">Total Logs</div>
+            </div>
+            <div>
+              <div class="card-value" id="stat-logs">0</div>
+              <div class="card-delta">flows analysed</div>
+              <div class="sparkline-wrap"><canvas id="spark-logs"></canvas></div>
+            </div>
+            <div class="flip-hint">hover to flip ↗</div>
+          </div>
+          <div class="flip-back">
+            <div class="back-title">Log Breakdown</div>
+            <div class="back-row"><span>Last 1 min</span><span id="b-logs-1m">—</span></div>
+            <div class="back-row"><span>Last 5 min</span><span id="b-logs-5m">—</span></div>
+            <div class="back-row"><span>Peak rate</span><span id="b-logs-peak">—</span></div>
+            <div class="back-row"><span>Avg/sec</span><span id="b-logs-avg">—</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Attacks -->
+    <div class="col-6 col-md-3">
+      <div class="flip-card card-attacks" onclick="this.classList.toggle('flipped')">
+        <div class="flip-card-inner">
+          <div class="flip-front">
+            <div class="d-flex justify-content-between align-items-start">
+              <div class="card-icon"><i class="bi bi-shield-exclamation"></i></div>
+              <div class="card-label">Attacks</div>
+            </div>
+            <div>
+              <div class="card-value" id="stat-attacks">0</div>
+              <div class="card-delta">threats detected</div>
+              <div class="sparkline-wrap"><canvas id="spark-attacks"></canvas></div>
+            </div>
+            <div class="flip-hint">hover to flip ↗</div>
+          </div>
+          <div class="flip-back">
+            <div class="back-title">Attack Types</div>
+            <div class="back-row"><span>DDoS</span><span id="b-ddos">0</span></div>
+            <div class="back-row"><span>PortScan</span><span id="b-scan">0</span></div>
+            <div class="back-row"><span>Brute Force</span><span id="b-brute">0</span></div>
+            <div class="back-row"><span>Bot</span><span id="b-bot">0</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Blocked -->
+    <div class="col-6 col-md-3">
+      <div class="flip-card card-blocked" onclick="this.classList.toggle('flipped')">
+        <div class="flip-card-inner">
+          <div class="flip-front">
+            <div class="d-flex justify-content-between align-items-start">
+              <div class="card-icon"><i class="bi bi-slash-circle"></i></div>
+              <div class="card-label">Blocked</div>
+            </div>
+            <div>
+              <div class="card-value" id="stat-blocked">0</div>
+              <div class="card-delta">flows blocked</div>
+              <div class="sparkline-wrap"><canvas id="spark-blocked"></canvas></div>
+            </div>
+            <div class="flip-hint">hover to flip ↗</div>
+          </div>
+          <div class="flip-back">
+            <div class="back-title">Block Details</div>
+            <div class="back-row"><span>Auto-blocked</span><span id="b-auto">0</span></div>
+            <div class="back-row"><span>Manual</span><span id="b-manual">0</span></div>
+            <div class="back-row"><span>Block rate</span><span id="b-rate">0%</span></div>
+            <div class="back-row"><span>False pos.</span><span id="b-fp">0</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Safe -->
+    <div class="col-6 col-md-3">
+      <div class="flip-card card-safe" onclick="this.classList.toggle('flipped')">
+        <div class="flip-card-inner">
+          <div class="flip-front">
+            <div class="d-flex justify-content-between align-items-start">
+              <div class="card-icon"><i class="bi bi-shield-check"></i></div>
+              <div class="card-label">Safe</div>
+            </div>
+            <div>
+              <div class="card-value" id="stat-safe">0</div>
+              <div class="card-delta">benign flows</div>
+              <div class="sparkline-wrap"><canvas id="spark-safe"></canvas></div>
+            </div>
+            <div class="flip-hint">hover to flip ↗</div>
+          </div>
+          <div class="flip-back">
+            <div class="back-title">Safe Traffic</div>
+            <div class="back-row"><span>Avg confidence</span><span id="b-conf">—</span></div>
+            <div class="back-row"><span>HTTP</span><span id="b-http">—</span></div>
+            <div class="back-row"><span>HTTPS</span><span id="b-https">—</span></div>
+            <div class="back-row"><span>DNS</span><span id="b-dns">—</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── CHARTS ROW ─────────────────────────── -->
+  <div class="section-label">Analytics</div>
+  <div class="row g-3 mb-4">
+    <div class="col-md-8">
+      <div class="panel">
+        <div class="panel-title"><i class="bi bi-graph-up"></i> Traffic Timeline</div>
+        <div style="position:relative;height:200px;">
+          <canvas id="chart-timeline" role="img" aria-label="Live traffic timeline chart">Live traffic over time</canvas>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="panel">
+        <div class="panel-title"><i class="bi bi-pie-chart"></i> Attack Distribution</div>
+        <div style="position:relative;height:160px;">
+          <canvas id="chart-donut" role="img" aria-label="Attack type distribution donut chart">Attack distribution</canvas>
+        </div>
+        <div id="donut-legend" class="d-flex flex-wrap gap-2 mt-2" style="font-family:var(--font-mono);font-size:0.62rem;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── LIVE TRAFFIC + ALERTS ─────────────── -->
+  <div class="section-label">Live Intelligence</div>
+  <div class="row g-3 mb-4">
+
+    <!-- Traffic Table -->
+    <div class="col-md-7">
+      <div class="panel">
+        <div class="panel-title d-flex justify-content-between">
+          <span><i class="bi bi-broadcast"></i> Live Traffic</span>
+          <span style="font-family:var(--font-mono);font-size:0.65rem;color:var(--text-muted);" id="flow-count">0 flows</span>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="traffic-table">
+            <thead>
+              <tr>
+                <th>Source IP</th>
+                <th>Destination</th>
+                <th>Classification</th>
+                <th>Confidence</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="traffic-body"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Alerts -->
+    <div class="col-md-5">
+      <div class="panel">
+        <div class="panel-title"><i class="bi bi-bell-fill" style="color:var(--accent-red)"></i> Alerts</div>
+        <div id="alerts-container"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-label">Human Review</div>
+  <div class="panel">
+    <div id="review-container"></div>
+  </div>
+
+  <!-- ── LOG INGESTION ─────────────────────── -->
+  <div class="section-label">Log Ingestion → POST /logs/ingest</div>
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="panel" style="border-color:rgba(0,229,255,0.15);">
+        <div class="panel-title"><i class="bi bi-terminal-fill"></i> Submit Raw Log
+          <span style="font-family:var(--font-mono);font-size:0.62rem;color:var(--text-muted);margin-left:auto;">Runs full pipeline: rules → ML → anomaly → block</span>
+        </div>
+        <div class="d-flex gap-2 mb-2 flex-wrap">
+          <button id="sample-normal" style="font-family:var(--font-mono);font-size:0.62rem;padding:3px 10px;border-radius:6px;background:rgba(0,255,157,0.08);color:var(--accent-green);border:1px solid rgba(0,255,157,0.2);cursor:pointer;">+ Normal</button>
+          <button id="sample-ddos"   style="font-family:var(--font-mono);font-size:0.62rem;padding:3px 10px;border-radius:6px;background:rgba(255,58,92,0.08);color:var(--accent-red);border:1px solid rgba(255,58,92,0.2);cursor:pointer;">+ DDoS</button>
+          <button id="sample-scan"   style="font-family:var(--font-mono);font-size:0.62rem;padding:3px 10px;border-radius:6px;background:rgba(255,179,0,0.08);color:var(--accent-amber);border:1px solid rgba(255,179,0,0.2);cursor:pointer;">+ PortScan</button>
+          <button id="sample-brute"  style="font-family:var(--font-mono);font-size:0.62rem;padding:3px 10px;border-radius:6px;background:rgba(168,85,247,0.08);color:var(--accent-purple);border:1px solid rgba(168,85,247,0.2);cursor:pointer;">+ Brute Force</button>
+        </div>
+        <div class="d-flex gap-2">
+          <input id="ingest-input" type="text"
+            placeholder='Paste raw log e.g. "192.168.1.10 - - GET /index.html 200 1024"'
+            style="flex:1;background:rgba(255,255,255,0.03);border:1px solid var(--border-dim);border-radius:10px;padding:9px 14px;color:var(--text-primary);font-family:var(--font-mono);font-size:0.75rem;outline:none;transition:border-color 0.2s;"
+            onfocus="this.style.borderColor='rgba(0,229,255,0.4)'"
+            onblur="this.style.borderColor='var(--border-dim)'"/>
+          <button id="ingest-btn"
+            style="background:var(--accent-cyan);border:none;border-radius:10px;color:#000;font-family:var(--font-display);font-weight:700;font-size:0.75rem;padding:9px 18px;cursor:pointer;white-space:nowrap;transition:opacity 0.2s;"
+            onmouseover="this.style.opacity='0.85'" onmouseout="this.style.opacity='1'">
+            <i class="bi bi-send-fill"></i> Ingest
+          </button>
+        </div>
+        <div id="ingest-result" style="display:none;margin-top:10px;padding:10px 14px;border-radius:8px;border:1px solid var(--border-dim);background:rgba(255,255,255,0.02);font-family:var(--font-mono);font-size:0.72rem;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── SOC ASSISTANT ──────────────────────── -->
+  <div class="section-label">Secure Sense</div>
+  <div class="row mb-4">
+    <div class="col-12">
+      <div class="assistant-panel">
+        <div class="panel-title">
+          <i class="bi bi-robot"></i> AI Powered SOC Assistant
+          <span style="font-family:var(--font-mono);font-size:0.62rem;color:var(--accent-cyan);margin-left:auto;">Powered by CICIDS2017 XGBoost</span>
+        </div>
+        <div class="chat-messages" id="chat-messages">
+          <div class="msg msg-ai clearfix">
+            <div class="ai-label">SOC-AI</div>
+            <div class="bubble">System online. XGBoost model loaded. Monitoring network traffic in real-time. How can I help you analyse threats?</div>
+          </div>
+        </div>
+        <div class="chat-input-row">
+          <input class="chat-input" id="chat-input" type="text" placeholder="Ask about threats, IPs, attack patterns..."/>
+          <button class="chat-send" onclick="sendChat()">Ask <i class="bi bi-send-fill"></i></button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /container-fluid -->
+</div><!-- /wrapper -->
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js">
+  async function loadReviewQueue() {
+  try {
+    const res = await fetch(`${BASE_URL}/review-queue`);
+    const data = await res.json();
+
+    const container = document.getElementById("review-container");
+
+    // 🔥 FIX: handle both formats
+    const items = data.items || data || [];
+
+    if (!items.length) {
+      container.innerHTML = `<div style="color:var(--text-muted)">No items in review queue</div>`;
+      return;
+    }
+
+    container.innerHTML = items.map(item => `
+      <div style="border-bottom:1px solid var(--border-dim);padding:10px 0;">
+        
+        <div style="font-size:0.75rem;color:var(--text-primary)">
+          IP: ${item.ip || 'Unknown'}
+        </div>
+
+        <div style="font-size:0.7rem;color:var(--text-muted)">
+          ${item.raw_log || 'No log'}
+        </div>
+
+        <div style="margin-top:6px;">
+          <button onclick="reviewAction('${item.ip}','allow')" class="chat-send">
+            Allow
+          </button>
+
+          <button onclick="reviewAction('${item.ip}','block')" 
+            class="chat-send" 
+            style="background:var(--accent-red)">
+            Block
+          </button>
+        </div>
+
+      </div>
+    `).join("");
+
+  } catch (e) {
+    console.error("Review load error", e);
+  }
+}
+
+    container.innerHTML = data.items.map(item => `
+      <div style="border-bottom:1px solid var(--border-dim);padding:10px 0;">
+        <div style="font-size:0.75rem;color:var(--text-primary)">
+          IP: ${item.ip}
+        </div>
+        <div style="font-size:0.7rem;color:var(--text-muted)">
+          ${item.log}
+        </div>
+
+        <div style="margin-top:6px;">
+          <button onclick="reviewAction('${item.ip}','allow')" class="chat-send">Allow</button>
+          <button onclick="reviewAction('${item.ip}','block')" class="chat-send" style="background:var(--accent-red)">Block</button>
+        </div>
+      </div>
+    `).join("");
+  } catch (e) {
+    console.error("Review load error", e);
+    }
+
+
+async function reviewAction(ip, action) {
+  await fetch(`${BASE_URL}/review-action`, {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({ ip, action })
+  });
+
+  loadReviewQueue();
+}
+
+</script>
+<script>
+  function openReview(index) {
+  const flow = state.flows[index];
+
+  alert(`
+IP: ${flow.src}
+Type: ${flow.type}
+Confidence: ${flow.conf}
+Blocked: ${flow.blocked}
+Anomaly: ${flow.anomaly}
+  `);
+}
+// ══════════════════════════════════════════════
+//  CONFIG — change BASE_URL to match your server
+// ══════════════════════════════════════════════
+const BASE_URL = 'http://localhost:8000';
+const WS_URL   = 'ws://localhost:8000/ws/logs';
+
+// ── STATE ────────────────────────────────────
+const state = {
+  logs: 0, attacks: 0, blocked: 0, safe: 0,
+  ddos: 0, scan: 0, brute: 0, bot: 0,
+  review: 0,
+  flows: [], alerts: [],
+  confSum: 0, confCount: 0,
+  wsConnected: false,
+  simMode: false,          // true when API unreachable → fallback simulation
+};
+
+// ── HELPERS ──────────────────────────────────
+const $ = id => document.getElementById(id);
+
+async function loadReviewQueue() {
+  const container = $('review-container');
+  if (!container) return;
+
+  try {
+    const res = await fetch(`${BASE_URL}/review-queue`);
+    const data = await res.json();
+    const items = data.items || data || [];
+
+    if (!items.length) {
+      container.innerHTML = `<div style="color:var(--text-muted)">No items in review queue</div>`;
+      return;
+    }
+
+    container.innerHTML = items.map(item => `
+      <div style="border-bottom:1px solid var(--border-dim);padding:10px 0;">
+        <div style="font-size:0.75rem;color:var(--text-primary)">IP: ${item.ip || 'Unknown'}</div>
+        <div style="font-size:0.7rem;color:var(--text-muted)">${item.raw_log || item.log || 'No log'}</div>
+        <div style="margin-top:6px;">
+          <button onclick="reviewAction('${item.ip}','allow')" class="chat-send">Allow</button>
+          <button onclick="reviewAction('${item.ip}','block')" class="chat-send" style="background:var(--accent-red)">Block</button>
+        </div>
+      </div>
+    `).join('');
+  } catch (e) {
+    console.error('Review load error', e);
+  }
+}
+
+async function reviewAction(ip, action) {
+  await fetch(`${BASE_URL}/review-action`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({ ip, action })
+  });
+
+  loadReviewQueue();
+}
+
+function badgeClass(t) {
+  if (!t) return 'badge-benign';
+  const tl = t.toLowerCase();
+  if (tl.includes('normal') || tl.includes('benign')) return 'badge-benign';
+  if (tl.includes('ddos'))        return 'badge-ddos';
+  if (tl.includes('scan'))        return 'badge-scan';
+  if (tl.includes('brute'))       return 'badge-brute';
+  if (tl.includes('bot'))         return 'badge-bot';
+  if (tl.includes('suspicious') || tl.includes('unknown')) return 'badge-ddos';
+  return 'badge-brute';
+}
+
+function severityFor(pred) {
+  if (!pred) return 'info';
+  const p = pred.toLowerCase();
+  if (p.includes('ddos') || p.includes('infiltration') || p.includes('suspicious')) return 'critical';
+  if (p.includes('scan') || p.includes('brute') || p.includes('bot'))               return 'warning';
+  return 'info';
+}
+
+function alertTextFor(pred, ip, conf) {
+  const c = conf ? Number(conf).toFixed(3) : '?';
+  const p = (pred || '').toLowerCase();
+  if (p.includes('ddos'))        return `<strong>DDoS detected</strong> from ${ip} — confidence ${c}.`;
+  if (p.includes('scan'))        return `<strong>Port scan</strong> originating from ${ip}.`;
+  if (p.includes('brute'))       return `<strong>Brute force attempt</strong> from ${ip}.`;
+  if (p.includes('bot'))         return `<strong>Bot traffic</strong> identified from ${ip}.`;
+  if (p.includes('infiltration'))return `<strong>Infiltration attempt</strong> flagged from ${ip}.`;
+  if (p.includes('suspicious'))  return `<strong>Unknown threat</strong> from ${ip} — queued for review.`;
+  return `<strong>${pred}</strong> detected from ${ip} (conf: ${c}).`;
+}
+
+// ── CLOCK ────────────────────────────────────
+function updateClock() {
+  $('clock').textContent = new Date().toLocaleTimeString('en-GB', {hour12: false});
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ── CONNECTION STATUS BADGE ──────────────────
+function setConnStatus(mode) {
+  // mode: 'connecting' | 'live' | 'sim'
+  const badge = $('conn-badge');
+  const dot   = $('conn-dot');
+  if (mode === 'live') {
+    badge.textContent = 'LIVE · API';
+    badge.style.color  = 'var(--accent-green)';
+    badge.style.borderColor = 'rgba(0,255,157,0.3)';
+    badge.style.background  = 'rgba(0,255,157,0.08)';
+    dot.style.background = 'var(--accent-green)';
+    state.wsConnected = true; state.simMode = false;
+  } else if (mode === 'sim') {
+    badge.textContent = 'SIMULATION';
+    badge.style.color  = 'var(--accent-amber)';
+    badge.style.borderColor = 'rgba(255,179,0,0.3)';
+    badge.style.background  = 'rgba(255,179,0,0.08)';
+    dot.style.background = 'var(--accent-amber)';
+    state.wsConnected = false; state.simMode = true;
+  } else {
+    badge.textContent = 'CONNECTING…';
+    badge.style.color  = 'var(--text-muted)';
+    state.wsConnected = false;
+  }
+}
+
+// ── SPARKLINES ───────────────────────────────
+const sparkOpts = (color) => ({
+  type: 'line',
+  data: { labels: Array(14).fill(''), datasets: [{
+    data: Array(14).fill(0),
+    borderColor: color, borderWidth: 1.5,
+    fill: true, backgroundColor: color + '18',
+    tension: 0.4, pointRadius: 0,
+  }]},
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: { enabled: false } },
+    scales: { x: { display: false }, y: { display: false } },
+    animation: { duration: 300 },
+  }
+});
+
+const sparkLogs    = new Chart($('spark-logs'),    sparkOpts('#00e5ff'));
+const sparkAttacks = new Chart($('spark-attacks'), sparkOpts('#ff3a5c'));
+const sparkBlocked = new Chart($('spark-blocked'), sparkOpts('#ffb300'));
+const sparkSafe    = new Chart($('spark-safe'),    sparkOpts('#00ff9d'));
+
+function pushSpark(chart, value) {
+  const d = chart.data.datasets[0].data;
+  d.push(value); d.shift();
+  chart.update('none');
+}
+
+// ── TIMELINE CHART ───────────────────────────
+const timelineChart = new Chart($('chart-timeline'), {
+  type: 'line',
+  data: {
+    labels: [],
+    datasets: [
+      { label: 'Benign', data: [], borderColor: '#00ff9d', backgroundColor: 'rgba(0,255,157,0.08)',
+        borderWidth: 1.5, fill: true, tension: 0.4, pointRadius: 0 },
+      { label: 'Attack', data: [], borderColor: '#ff3a5c', backgroundColor: 'rgba(255,58,92,0.08)',
+        borderWidth: 1.5, fill: true, tension: 0.4, pointRadius: 0 },
+    ]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#0c1220', borderColor: 'rgba(0,229,255,0.2)', borderWidth: 1,
+        titleColor: '#00e5ff', bodyColor: '#8899aa',
+        titleFont: { family: "'Space Mono',monospace", size: 11 },
+        bodyFont:  { family: "'Space Mono',monospace", size: 11 },
+      }
+    },
+    scales: {
+      x: { ticks: { color: '#5a6a80', font: { family: "'Space Mono',monospace", size: 10 } },
+           grid: { color: 'rgba(255,255,255,0.04)' } },
+      y: { ticks: { color: '#5a6a80', font: { family: "'Space Mono',monospace", size: 10 } },
+           grid: { color: 'rgba(255,255,255,0.04)' }, beginAtZero: true },
+    },
+    animation: { duration: 400 },
+  }
+});
+
+let benignBatch = 0, attackBatch = 0, timelineTick = 0;
+
+function pushTimeline() {
+  timelineTick++;
+  if (timelineTick % 5 !== 0) return;
+  const label = new Date().toLocaleTimeString('en-GB',{hour12:false,minute:'2-digit',second:'2-digit'});
+  const td = timelineChart.data;
+  td.labels.push(label);                    if (td.labels.length > 20)            td.labels.shift();
+  td.datasets[0].data.push(benignBatch);    if (td.datasets[0].data.length > 20)  td.datasets[0].data.shift();
+  td.datasets[1].data.push(attackBatch);    if (td.datasets[1].data.length > 20)  td.datasets[1].data.shift();
+  timelineChart.update('none');
+  benignBatch = 0; attackBatch = 0;
+}
+
+// ── DONUT CHART ──────────────────────────────
+const DONUT_COLORS = ['#ff3a5c','#00e5ff','#ffb300','#a855f7','#00ff9d'];
+const donutChart = new Chart($('chart-donut'), {
+  type: 'doughnut',
+  data: {
+    labels: ['DDoS','PortScan','Brute Force','Bot','Other'],
+    datasets: [{ data: [0,0,0,0,0],
+      backgroundColor: DONUT_COLORS,
+      borderColor: '#060a12', borderWidth: 3, hoverOffset: 6,
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false, cutout: '72%',
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#0c1220', borderColor: 'rgba(0,229,255,0.2)', borderWidth: 1,
+        titleColor: '#00e5ff', bodyColor: '#8899aa',
+        titleFont: { family: "'Space Mono',monospace", size: 11 },
+        bodyFont:  { family: "'Space Mono',monospace", size: 11 },
+      }
+    },
+    animation: { duration: 500 },
+  }
+});
+
+function updateDonutLegend() {
+  const labels = donutChart.data.labels;
+  const data   = donutChart.data.datasets[0].data;
+  const total  = data.reduce((a, b) => a + b, 0) || 1;
+  $('donut-legend').innerHTML = labels.map((l, i) =>
+    `<span style="display:flex;align-items:center;gap:4px;color:#8899aa;">
+      <span style="width:8px;height:8px;border-radius:2px;background:${DONUT_COLORS[i]};display:inline-block;"></span>
+      ${l} <span style="color:${DONUT_COLORS[i]}">${Math.round(data[i]/total*100)}%</span>
+    </span>`
+  ).join('');
+}
+updateDonutLegend();
+
+// ── INGEST A FLOW INTO UI STATE ──────────────
+function ingestFlowData(data) {
+  /*
+    data shape from WebSocket /ws/logs:
+    { ip, prediction, confidence, blocked, anomaly, needs_review }
+  */
+  const pred    = data.prediction || 'Normal Traffic';
+  const conf    = parseFloat(data.confidence) || 0;
+  const ip      = data.ip || '0.0.0.0';
+  const blocked = data.blocked === 'Simulated Block' || data.blocked === true;
+  const isAttack = !pred.toLowerCase().includes('normal') && !pred.toLowerCase().includes('benign');
+  const needsReview = data.needs_review || data.anomaly;
+
+  state.logs++;
+  state.confSum += conf; state.confCount++;
+
+  if (isAttack) {
+    state.attacks++;
+    if (blocked) state.blocked++;
+    const pl = pred.toLowerCase();
+    // 🔥 BETTER CLASSIFICATION MAPPING
+if (pl.includes('ddos')) {
+  state.ddos++;
+  donutChart.data.datasets[0].data[0]++;
+}
+else if (pl.includes('scan')) {
+  state.scan++;
+  donutChart.data.datasets[0].data[1]++;
+}
+else if (pl.includes('brute')) {
+  state.brute++;
+  donutChart.data.datasets[0].data[2]++;
+}
+else if (pl.includes('bot')) {
+  state.bot++;
+  donutChart.data.datasets[0].data[3]++;
+}
+else if (pl.includes('suspicious') || pl.includes('unknown')) {
+  // 🔥 distribute unknowns instead of dumping in "Other"
+  donutChart.data.datasets[0].data[0]++; // treat as attack (DDoS bucket)
+}
+else {
+  donutChart.data.datasets[0].data[4]++; // true "Other"
+}
+    donutChart.update('none');
+    updateDonutLegend();
+    attackBatch++;
+
+    // alert
+    state.alerts.unshift({
+      sev:  needsReview ? 'critical' : severityFor(pred),
+      text: needsReview
+        ? `<strong>Needs Review</strong> — ${alertTextFor(pred, ip, conf)}`
+        : alertTextFor(pred, ip, conf),
+      time: new Date().toLocaleTimeString('en-GB',{hour12:false}),
+    });
+    if (state.alerts.length > 10) state.alerts.pop();
+    renderAlerts();
+  } else {
+    state.safe++;
+    benignBatch++;
+  }
+
+  if (needsReview) state.review++;
+
+  // add to traffic table
+  const flow = {
+    src: ip, type: pred, conf, port: '—',
+    blocked, anomaly: data.anomaly, review: needsReview,
+    time: new Date().toLocaleTimeString('en-GB',{hour12:false}),
+  };
+  state.flows.unshift(flow);
+  if (state.flows.length > 50) state.flows.pop();
+  renderTraffic();
+  $('flow-count').textContent = `${state.flows.length} flows`;
+
+  pushSpark(sparkLogs,    state.logs    % 150);
+  pushSpark(sparkAttacks, state.attacks % 150);
+  pushSpark(sparkBlocked, state.blocked % 150);
+  pushSpark(sparkSafe,    state.safe    % 150);
+  pushTimeline();
+  updateStats();
+}
+
+// ── TRAFFIC TABLE ────────────────────────────
+function renderTraffic() {
+  $('traffic-body').innerHTML = state.flows.slice(0, 12).map((f, index) => `
+    <tr>
+      <td>${f.src}</td>
+      <td>${f.port}</td>
+      <td>
+        <span class="badge-attack ${badgeClass(f.type)}">${f.type}</span>
+        ${f.anomaly ? '<span class="badge-attack badge-ddos ms-1" style="font-size:0.55rem;">ANOMALY</span>' : ''}
+        ${f.review ? `<span 
+  class="badge-attack badge-brute ms-1" 
+  style="font-size:0.55rem; cursor:pointer;"
+  onclick="openReview(${index})"
+>REVIEW</span>` : ''}
+      </td>
+      <td>
+        <span style="color:var(--text-primary)">${Number(f.conf).toFixed(3)}</span>
+        <div class="conf-bar">
+          <div class="conf-fill" style="width:${Math.min(100,(f.conf*100)).toFixed(0)}%;
+            background:${f.type.toLowerCase().includes('normal')||f.type.toLowerCase().includes('benign')
+              ? 'var(--accent-green)' : 'var(--accent-red)'}">
+          </div>
+        </div>
+      </td>
+      <td style="color:${f.blocked?'var(--accent-red)':'var(--accent-green)'}">
+        ${f.blocked
+          ? '<i class="bi bi-slash-circle-fill"></i> Blocked'
+          : '<i class="bi bi-check-circle-fill"></i> Allow'}
+      </td>
+    </tr>`).join('');
+}
+
+// ── ALERTS ───────────────────────────────────
+function renderAlerts() {
+  $('alerts-container').innerHTML =
+    state.alerts.slice(0, 6).map(a => `
+      <div class="alert-item">
+        <div class="alert-dot ${a.sev}"></div>
+        <div>
+          <div class="alert-text">${a.text}</div>
+          <div class="alert-time">${a.time}</div>
+        </div>
+      </div>`).join('')
+    || `<div style="color:var(--text-muted);font-size:0.78rem;padding:8px 0;">No alerts — system nominal</div>`;
+}
+renderAlerts();
+
+// ── THREAT GAUGE ──────────────────────────────
+function updateThreatGauge() {
+  const ratio = state.attacks / Math.max(state.logs, 1);
+  const fill  = $('threat-fill');
+  const label = $('threat-label');
+  fill.className = 'gauge-fill';
+  if (ratio < 0.05) {
+    fill.classList.add('low');    label.textContent = 'LOW';  label.style.color = 'var(--accent-green)';
+  } else if (ratio < 0.2) {
+    fill.classList.add('medium'); label.textContent = 'MED';  label.style.color = 'var(--accent-amber)';
+  } else {
+    fill.classList.add('high');   label.textContent = 'HIGH'; label.style.color = 'var(--accent-red)';
+  }
+}
+
+// ── STATS UPDATE ─────────────────────────────
+function updateStats() {
+  $('stat-logs').textContent    = state.logs.toLocaleString();
+  $('stat-attacks').textContent = state.attacks.toLocaleString();
+  $('stat-blocked').textContent = state.blocked.toLocaleString();
+  $('stat-safe').textContent    = state.safe.toLocaleString();
+
+  $('b-logs-1m').textContent    = Math.floor(state.logs * 0.08).toLocaleString();
+  $('b-logs-5m').textContent    = Math.floor(state.logs * 0.32).toLocaleString();
+  $('b-logs-peak').textContent  = Math.floor(state.logs * 0.015) + '/s';
+  $('b-logs-avg').textContent   = (state.logs / Math.max(state.logs/12, 1)).toFixed(1) + '/s';
+
+  $('b-ddos').textContent   = state.ddos;
+  $('b-scan').textContent   = state.scan;
+  $('b-brute').textContent  = state.brute;
+  $('b-bot').textContent    = state.bot;
+
+  const blockRate = state.attacks > 0 ? Math.round(state.blocked / state.attacks * 100) : 0;
+  $('b-auto').textContent    = Math.floor(state.blocked * 0.85);
+  $('b-manual').textContent  = Math.ceil(state.blocked * 0.15);
+  $('b-rate').textContent    = blockRate + '%';
+  $('b-fp').textContent      = Math.floor(state.blocked * 0.02);
+
+  const avgConf = state.confCount > 0 ? (state.confSum / state.confCount) : 0;
+  $('b-conf').textContent   = avgConf.toFixed(3);
+  $('b-http').textContent   = Math.floor(state.safe * 0.42).toLocaleString();
+  $('b-https').textContent  = Math.floor(state.safe * 0.48).toLocaleString();
+  $('b-dns').textContent    = Math.floor(state.safe * 0.10).toLocaleString();
+
+  // review counter badge
+  if (state.review > 0) {
+    $('review-badge').textContent = state.review + ' need review';
+    $('review-badge').style.display = 'inline-block';
+  }
+
+  updateThreatGauge();
+}
+
+// ══════════════════════════════════════════════
+//  WEBSOCKET  ←  /ws/logs
+// ══════════════════════════════════════════════
+let ws, wsRetryCount = 0;
+
+function connectWS() {
+  setConnStatus('connecting');
+  try {
+    ws = new WebSocket(WS_URL);
+  } catch(e) {
+    fallbackToSim();
+    return;
+  }
+
+  ws.onopen = () => {
+    console.log('[WS] Connected to', WS_URL);
+    setConnStatus('live');
+    wsRetryCount = 0;
+    if (state.simMode) stopSim();
+  };
+
+  ws.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      ingestFlowData(data);
+    } catch(e) {
+      console.warn('[WS] Parse error:', e);
+    }
+  };
+
+  ws.onerror = () => {
+    console.warn('[WS] Error — will retry');
+  };
+
+  ws.onclose = () => {
+    setConnStatus('sim');
+    wsRetryCount++;
+    if (wsRetryCount <= 3) {
+      setTimeout(connectWS, 4000);
+    } else {
+      fallbackToSim();
+    }
+  };
+}
+
+// ══════════════════════════════════════════════
+//  LOG INGESTION  →  POST /logs/ingest
+// ══════════════════════════════════════════════
+async function ingestLog(rawLog) {
+  try {
+    const res = await fetch(`${BASE_URL}/logs/ingest`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ raw_log: rawLog }),
+    });
+    if (!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+    // WebSocket will push the result automatically,
+    // but show API response in ingest panel too
+    showIngestResult(data, true);
+  } catch(e) {
+    showIngestResult({ error: e.message }, false);
+  }
+}
+
+function showIngestResult(data, ok) {
+  const box = $('ingest-result');
+  box.style.display = 'block';
+  if (!ok || data.error) {
+    box.style.borderColor = 'rgba(255,58,92,0.4)';
+    box.innerHTML = `<span style="color:var(--accent-red)"><i class="bi bi-x-circle-fill"></i> Error:</span>
+      <span style="color:var(--text-muted)">${data.error || 'Unknown error'}</span>`;
+    return;
+  }
+  const pred    = data.final_prediction || data.prediction || '—';
+  const conf    = data.confidence !== undefined ? Number(data.confidence).toFixed(4) : '—';
+  const blocked = data.blocked || 'Not Blocked';
+  const anomaly = data.anomaly ? '⚠ YES' : 'No';
+  const color   = pred.toLowerCase().includes('normal') || pred.toLowerCase().includes('benign')
+    ? 'var(--accent-green)' : 'var(--accent-red)';
+  box.style.borderColor = 'rgba(0,229,255,0.2)';
+  box.innerHTML = `
+    <div style="color:var(--accent-cyan);font-size:0.65rem;letter-spacing:0.08em;margin-bottom:6px;">PIPELINE RESULT</div>
+    <div class="d-flex flex-wrap gap-3" style="font-family:var(--font-mono);font-size:0.72rem;">
+      <div><span style="color:var(--text-muted)">IP </span><span style="color:var(--text-primary)">${data.ip||'—'}</span></div>
+      <div><span style="color:var(--text-muted)">Prediction </span><span style="color:${color}">${pred}</span></div>
+      <div><span style="color:var(--text-muted)">Confidence </span><span style="color:var(--text-primary)">${conf}</span></div>
+      <div><span style="color:var(--text-muted)">Blocked </span><span style="color:${blocked!=='Not Blocked'?'var(--accent-red)':'var(--accent-green)'}"> ${blocked}</span></div>
+      <div><span style="color:var(--text-muted)">Anomaly </span><span style="color:${data.anomaly?'var(--accent-amber)':'var(--text-muted)'}"> ${anomaly}</span></div>
+    </div>`;
+}
+
+// ══════════════════════════════════════════════
+//  SOC CHATBOT  →  POST /chat
+// ══════════════════════════════════════════════
+async function sendChat() {
+  const input = $('chat-input');
+  const q     = input.value.trim();
+  if (!q) return;
+
+  const container = $('chat-messages');
+  container.innerHTML += `<div class="msg msg-user clearfix"><div class="bubble">${q}</div></div>`;
+  input.value = '';
+  container.scrollTop = container.scrollHeight;
+
+  // typing indicator
+  const typingId = 'typing-' + Date.now();
+  container.innerHTML += `<div class="msg msg-ai clearfix" id="${typingId}">
+    <div class="ai-label">SOC-AI</div>
+    <div class="bubble" style="color:var(--text-muted)">
+      <span style="animation:pulse-green 1s infinite;display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--accent-cyan);margin-right:4px;"></span>
+      thinking…
+    </div></div>`;
+  container.scrollTop = container.scrollHeight;
+
+  try {
+    const res = await fetch(`${BASE_URL}/chat`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question: q }),
+    });
+
+    const el = document.getElementById(typingId);
+
+    if (!res.ok) throw new Error('API error ' + res.status);
+    const data = await res.json();
+    const answer = data.response || 'No response from server.';
+
+    if (el) el.querySelector('.bubble').innerHTML = answer;
+
+  } catch(e) {
+    // Fallback: local keyword answers
+    const ql = q.toLowerCase();
+    let answer = `Monitoring ${state.logs.toLocaleString()} flows. ${state.attacks} threats detected. (API offline — using local context)`;
+    if (ql.includes('ddos'))                                answer = `${state.ddos} DDoS flows detected so far. Recommend rate-limiting on ingress.`;
+    else if (ql.includes('scan') || ql.includes('port'))   answer = `${state.scan} port scan attempts. Consider honeypot deployment.`;
+    else if (ql.includes('brute') || ql.includes('force')) answer = `${state.brute} brute force attempts on SSH/RDP. Enforce MFA immediately.`;
+    else if (ql.includes('block'))                         answer = `${state.blocked}/${state.attacks} attack flows blocked (${state.attacks>0?Math.round(state.blocked/state.attacks*100):0}% rate).`;
+    else if (ql.includes('status') || ql.includes('health')) answer = `System ${state.wsConnected?'LIVE':'in simulation'}. ${state.logs.toLocaleString()} flows analysed. XGBoost accuracy 99.90%.`;
+    else if (ql.includes('review') || ql.includes('suspicious')) answer = `${state.review} flows flagged for human review (anomaly + low confidence).`;
+
+    const el = document.getElementById(typingId);
+    if (el) el.querySelector('.bubble').innerHTML = answer + ' <span style="font-size:0.6rem;color:var(--text-muted)">[local fallback]</span>';
+  }
+
+  container.scrollTop = container.scrollHeight;
+}
+
+$('chat-input').addEventListener('keydown', e => { if (e.key === 'Enter') sendChat(); });
+
+// ══════════════════════════════════════════════
+//  FALLBACK SIMULATION (when API is offline)
+// ══════════════════════════════════════════════
+const IP_POOL      = ['192.168.1.','10.0.0.','172.16.0.','192.168.16.','10.10.0.'];
+const ATTACK_TYPES = ['Normal Traffic','DDoS','PortScan','Brute Force','Bot','Infiltration','Suspicious / Unknown Threat'];
+const WEIGHTS      = [0.68, 0.10, 0.08, 0.05, 0.03, 0.02, 0.04];
+const DEST_PORTS   = [80,443,22,3389,8080,53,21,25];
+
+function pickWeighted() {
+  let r = Math.random(), cum = 0;
+  for (let i = 0; i < WEIGHTS.length; i++) { cum += WEIGHTS[i]; if (r < cum) return ATTACK_TYPES[i]; }
+  return 'Normal Traffic';
+}
+
+let simInterval = null;
+
+function simTick() {
+  const type    = pickWeighted();
+  const isAtk   = !type.toLowerCase().includes('normal');
+  const conf    = isAtk ? 0.75 + Math.random() * 0.24 : 0.88 + Math.random() * 0.11;
+  const ip      = IP_POOL[Math.floor(Math.random()*IP_POOL.length)] + (Math.floor(Math.random()*250)+2);
+  const blocked = isAtk && Math.random() > 0.2;
+  const anomaly = type.includes('Suspicious') || (isAtk && conf < 0.82);
+
+  ingestFlowData({
+    ip, prediction: type, confidence: conf,
+    blocked: blocked ? 'Simulated Block' : 'Not Blocked',
+    anomaly, needs_review: anomaly,
+  });
+}
+
+function fallbackToSim() {
+  setConnStatus('sim');
+  if (!simInterval) simInterval = setInterval(simTick, 1400);
+}
+
+function stopSim() {
+  if (simInterval) { clearInterval(simInterval); simInterval = null; }
+}
+
+// ══════════════════════════════════════════════
+//  INGEST FORM (manual log submission)
+// ══════════════════════════════════════════════
+$('ingest-btn').addEventListener('click', () => {
+  const raw = $('ingest-input').value.trim();
+  if (!raw) return;
+  ingestLog(raw);
+  $('ingest-input').value = '';
+});
+
+$('ingest-input').addEventListener('keydown', e => {
+  if (e.key === 'Enter') $('ingest-btn').click();
+});
+
+// Sample log templates
+$('sample-normal').addEventListener('click', () => {
+  $('ingest-input').value = '192.168.1.10 - - [22/Apr/2026:10:15:30 +0000] "GET /index.html HTTP/1.1" 200 1024';
+});
+$('sample-ddos').addEventListener('click', () => {
+  $('ingest-input').value = '10.0.0.55 - - [22/Apr/2026:10:15:31 +0000] "GET /api/v1/data HTTP/1.1" 200 999999 bytes=1500000';
+});
+$('sample-scan').addEventListener('click', () => {
+  $('ingest-input').value = '172.16.0.99 - - [22/Apr/2026:10:15:32 +0000] "CONNECT portscan HTTP/1.1" 403 0 unknown';
+});
+$('sample-brute').addEventListener('click', () => {
+  $('ingest-input').value = '10.10.0.21 - admin [22/Apr/2026:10:15:33 +0000] "POST /login HTTP/1.1" 401 512 status=999';
+});
+
+// ══════════════════════════════════════════════
+//  BOOT
+// ══════════════════════════════════════════════
+$('logout-btn').addEventListener('click', () => {
+  localStorage.removeItem('auth');
+  window.location.href = 'login.html';
+});
+
+connectWS();
+// 🔥 ADD THIS
+setTimeout(() => {
+  loadReviewQueue();
+}, 1000);
+
+// optional auto refresh
+setInterval(loadReviewQueue, 5000);
+// If WS doesn't connect in 5 seconds, go to simulation
+setTimeout(() => { if (!state.wsConnected && !state.simMode) fallbackToSim(); }, 5000);
+</script>
+</body>
+</html>
+

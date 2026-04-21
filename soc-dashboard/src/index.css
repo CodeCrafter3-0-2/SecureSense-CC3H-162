@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* 🌌 Background */
+body {
+  background: radial-gradient(circle at top, #0f172a, #020617);
+  color: white;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+/* 🧊 Glass Card */
+.glass {
+  background: rgba(30, 41, 59, 0.4);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 16px;
+}
+
+/* 🔥 Neon glow */
+.neon {
+  text-shadow: 0 0 10px rgba(0,255,255,0.6);
+}
+
+/* 🎴 3D card */
+.card-3d {
+  transition: all 0.3s ease;
+  transform-style: preserve-3d;
+}
+
+.card-3d:hover {
+  transform: rotateY(8deg) rotateX(5deg) scale(1.03);
+}

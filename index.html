@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SecureSense -Threat Intelligence</title>
+
+    <style>
+        body {
+            font-family: Arial;
+            background: #0f172a;
+            color: white;
+            padding: 20px;
+        }
+
+        h1 { text-align: center; }
+
+        .container {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .card {
+            background: #1e293b;
+            padding: 15px;
+            border-radius: 10px;
+            flex: 1;
+            min-width: 300px;
+        }
+
+        .log {
+            padding: 10px;
+            margin-bottom: 5px;
+            background: #020617;
+            border-left: 5px solid #334155;
+        }
+
+        .attack { border-left: 5px solid red; color: #f87171; }
+        .normal { border-left: 5px solid green; color: #4ade80; }
+
+        /* 🔥 ALERT STYLE */
+        .alert {
+            background: #450a0a;
+            border: 1px solid red;
+            padding: 10px;
+            margin-bottom: 8px;
+            border-radius: 6px;
+            animation: blink 1s infinite;
+        }
+
+        @keyframes blink {
+            50% { opacity: 0.6; }
+        }
+
+        input {
+            width: 100%;
+            padding: 8px;
+            margin-top: 10px;
+        }
+
+        button {
+            padding: 6px;
+            margin-top: 5px;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        .result {
+            margin-top: 10px;
+            background: #020617;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 13px;
+        }
+    </style>
+</head>
+
+<body>
+
+<h1>🚨 SecureSense -Threat Intelligence</h1>
+
+<div class="container">
+
+    <!-- Live Logs -->
+    <div class="card">
+        <h3>📡 Live Traffic</h3>
+        <div id="logs"></div>
+    </div>
+
+    <!-- Stats -->
+    <div class="card">
+        <h3>📊 Stats</h3>
+        <p>Total Logs: <span id="total">0</span></p>
+        <p>Attacks: <span id="attacks">0</span></p>
+        <p>Blocked: <span id="blocked">0</span></p>
+    </div>
+
+    <!-- Chatbot -->
+    <div class="card">
+        <h3>🤖 SOC Assistant</h3>
+        <input id="question" placeholder="Ask something..." />
+        <button onclick="ask()">Ask</button>
+        <div id="response" class="result"></div>
+    </div>
+
+    <!-- 🔥 ALERT PANEL -->
+    <div class="card">
+        <h3>🚨 Alerts (Human Review)</h3>
+        <div id="alerts"></div>
+    </div>
+
+</div>
+
+<script>
+const BASE = "http://192.168.16.74:8000";
+
+// 🔥 WebSocket
+const ws = new WebSocket("ws://192.168.16.74:8000/ws/logs");
+
+let total = 0, attacks = 0, blocked = 0;
+
+ws.onopen = () => console.log("✅ WebSocket Connected");
+ws.onerror = (e) => console.error("❌ WebSocket Error", e);
+ws.onclose = () => console.log("⚠️ WebSocket Closed");
+
+ws.onmessage = (e) => {
+    const d = JSON.parse(e.data);
+    console.log("WS DATA:")
+
+    total++;
+    const isAttack = d.prediction !== "Normal Traffic";
+
+    if (isAttack) attacks++;
+    if (d.blocked !== "Not Blocked") blocked++;
+
+    document.getElementById("total").innerText = total;
+    document.getElementById("attacks").innerText = attacks;
+    document.getElementById("blocked").innerText = blocked;
+
+    // 🔹 LIVE LOG
+    const log = document.createElement("div");
+    log.className = "log " + (isAttack ? "attack" : "normal");
+
+    log.innerHTML = `
+        <b>${d.ip}</b> → ${d.prediction}<br>
+        Confidence: ${d.confidence}<br>
+        Status: ${d.blocked}
+    `;
+
+    document.getElementById("logs").prepend(log);
+
+    // 🔥 HUMAN REVIEW ALERT
+    if (d.needs_review) {
+        const alert = document.createElement("div");
+        alert.className = "alert";
+
+        alert.innerHTML = `
+            ⚠ <b>${d.ip}</b> → ${d.prediction}<br>
+            Score: ${d.confidence}<br>
+            <button onclick="labelAlert('${d.ip}','Attack')">Attack</button>
+            <button onclick="labelAlert('${d.ip}','Normal')">Normal</button>
+        `;
+
+        document.getElementById("alerts").prepend(alert);
+    }
+};
+
+// 🔥 LABEL FUNCTION
+async function labelAlert(ip, label) {
+    try {
+        await fetch(BASE + "/alerts/label", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({
+                id: 1,  // improve later
+                label: label
+            })
+        });
+
+        alert("Marked as " + label);
+
+    } catch (err) {
+        alert("Error labeling alert");
+    }
+}
+
+// 🔥 CHATBOT
+async function ask() {
+    const q = document.getElementById("question").value;
+    if (!q) return;
+
+    document.getElementById("response").innerText = "Thinking...";
+
+    try {
+        const res = await fetch(BASE + "/chat", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({question: q})
+        });
+
+        const data = await res.json();
+        document.getElementById("response").innerText = data.response;
+
+    } catch (err) {
+        document.getElementById("response").innerText = "Error connecting to AI";
+    }
+}
+</script>
+
+</body>
+</html>
