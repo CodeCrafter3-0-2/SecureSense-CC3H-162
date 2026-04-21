@@ -19,7 +19,7 @@ from pipeline.flow import update_flow
 from pipeline.features import extract_features
 from pipeline.rules import rule_based_detection
 from pipeline.blocker import block_ip
-from pipeline.chatbot import generate_response
+from pipeline.parser import generate_response
 from pipeline.anomly import is_anomaly
 
 # ─────────────────────────────────────────────
